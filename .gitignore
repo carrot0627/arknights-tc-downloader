@@ -1,0 +1,15 @@
+# 运行时产物
+downloads/
+*.log
+
+# 本机个人设置（背景图路径等，每台机器不同）
+background.json
+
+# 分块 / 临时文件
+*.bin
+*.tmp
+
+# 编辑器 / 系统
+.vscode/
+desktop.ini
+Thumbs.db

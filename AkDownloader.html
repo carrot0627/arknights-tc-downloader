@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>AkDownloader</title>
+<style>
+  :root{--bg:#0b0f17;--card:#151b26;--line:#232c3b;--fg:#e6edf7;--dim:#8b98ad;--ok:#3ddc84;--run:#4d9fff;--warn:#ffb454}
+  *{box-sizing:border-box}
+  body{margin:0;padding:24px;background:radial-gradient(1200px 600px at 20% -10%,#16233a 0%,#0b0f17 55%);
+       color:var(--fg);font:14px/1.5 "Segoe UI","Microsoft YaHei",system-ui,sans-serif}
+  h1{margin:0 0 4px;font-size:20px;letter-spacing:.4px}
+  .sub{color:var(--dim);font-size:12px;margin-bottom:14px}
+  .meta{color:var(--dim);font-size:12px;margin-bottom:18px;display:flex;gap:18px;flex-wrap:wrap}
+  .meta b{color:#b9c8dd;font-weight:600}
+  .hero{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+  .stat .k{color:var(--dim);font-size:12px;margin-bottom:6px}
+  .stat .v{font-size:21px;font-weight:600;font-variant-numeric:tabular-nums}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px;
+        box-shadow:0 8px 28px rgba(0,0,0,.35)}
+  .bar{height:14px;background:#0d131d;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+  .bar>i{display:block;height:100%;border-radius:7px;background:linear-gradient(90deg,#2f7dff,#4d9fff);transition:width .6s ease}
+  .bar.ok>i{background:linear-gradient(90deg,#25a86a,#3ddc84)}
+  .row{display:flex;align-items:center;gap:12px;padding:6px 0}
+  .row .nm{width:210px;font-family:ui-monospace,Consolas,monospace;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .bar{flex:1}
+  .row .pc{width:170px;text-align:right;font-family:ui-monospace,Consolas,monospace;font-size:12px;
+           color:var(--dim);font-variant-numeric:tabular-nums}
+  .grid{display:grid;grid-template-columns:repeat(16,1fr);gap:5px}
+  .cell{height:36px;background:#0d131d;border:1px solid var(--line);border-radius:6px;position:relative;overflow:hidden}
+  .cell>i{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(180deg,#4d9fff,#2f7dff);transition:height .5s ease}
+  .cell span{position:absolute;inset:0;display:grid;place-items:center;font-size:9px;color:#9fb4d4;font-family:monospace}
+  pre{background:#0d131d;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:11.5px;
+      color:#9fb4d4;max-height:200px;overflow:auto;margin:0;white-space:pre-wrap}
+  .legend{color:var(--dim);font-size:12px;margin-bottom:10px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  #banner{display:none;border-radius:14px;padding:18px 20px;margin-bottom:16px;border:1px solid #2b6b46;
+          background:linear-gradient(180deg,#12291d,#0f1f17)}
+  #banner h2{margin:0 0 8px;font-size:18px;color:var(--ok)}
+  #banner p{margin:4px 0;font-size:13px;color:#cfe3d6}
+  #banner code{background:#0b1610;border:1px solid #2b6b46;border-radius:6px;padding:2px 6px;font-size:12px;color:#9fe3bd}
+</style>
+</head>
+<body>
+<h1 id="title">AkDownloader</h1>
+<div class="sub" id="subtitle">正在连接看板服务…</div>
+<div class="meta">
+  <span>模式 <b id="mode">-</b></span>
+  <span>并发 <b id="workers">-</b></span>
+  <span>更新 <b id="ts">--:--:--</b></span>
+  <span>目标目录 <b id="targets">-</b></span>
+</div>
+
+<div id="banner">
+  <h2>下载完成</h2>
+  <p id="bannerHint"></p>
+  <p>启动器：<code id="bannerLauncher"></code></p>
+</div>
+
+<div class="hero">
+  <div class="stat"><div class="k">总进度</div><div class="v" id="overall">--</div></div>
+  <div class="stat"><div class="k">已下载 / 总量</div><div class="v" id="have">--</div></div>
+  <div class="stat"><div class="k">实时速度</div><div class="v" id="speed">--</div></div>
+  <div class="stat"><div class="k">预计剩余</div><div class="v" id="eta">--</div></div>
+</div>
+
+<div class="card"><div class="bar" style="height:22px"><i id="obar" style="width:0%"></i></div></div>
+
+<div class="card">
+  <div class="legend"><span>文件进度</span><span id="doneCount"></span></div>
+  <div id="parts"></div>
+</div>
+
+<div class="card">
+  <div class="legend"><span>在途分块（槽位按文件 + 字节顺序固定，填满 100% 后被新分块替换）</span><span id="connInfo"></span></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<div class="card">
+  <div class="legend"><span>日志</span></div>
+  <pre id="log"></pre>
+</div>
+
+<script>
+function h(n){const u=['B','KB','MB','GB','TB'];let i=0;n=+n;while(n>=1024&&i<u.length-1){n/=1024;i++}return n.toFixed(n<10?2:1)+' '+u[i]}
+function dur(s){if(s<0||!isFinite(s))return '--';const d=Math.floor(s/86400),hh=Math.floor(s%86400/3600),m=Math.floor(s%3600/60),ss=Math.floor(s%60);
+  if(d)return d+' 天 '+hh+' 小时';if(hh)return hh+' 时 '+m+' 分';if(m)return m+' 分 '+ss+' 秒';return ss+' 秒'}
+async function tick(){
+  try{
+    const d = await (await fetch('/data?_='+Date.now())).json();
+    document.getElementById('ts').textContent = d.now;
+    document.getElementById('title').textContent = d.title || 'AkDownloader';
+    document.getElementById('subtitle').textContent = d.subtitle || '';
+    document.getElementById('mode').textContent = (d.mode === 'sdk' ? '启动器分包（自动提取）' : '手动地址');
+    document.getElementById('workers').textContent = d.workers + ' 连接';
+    document.getElementById('targets').textContent = d.targets || '-';
+
+    const pct = d.totalSize ? d.totalHave/d.totalSize*100 : 0;
+    document.getElementById('overall').textContent = pct.toFixed(2)+'%';
+    document.getElementById('have').textContent = h(d.totalHave)+' / '+h(d.totalSize);
+    document.getElementById('speed').textContent = d.finished ? '已完成' : h(d.speed)+'/s';
+    document.getElementById('eta').textContent = d.finished ? '—' : dur(d.eta);
+    document.getElementById('obar').style.width = pct.toFixed(4)+'%';
+
+    document.getElementById('banner').style.display = d.finished ? 'block' : 'none';
+    if (d.finished) {
+      document.getElementById('bannerHint').textContent = d.installHint || '';
+      document.getElementById('bannerLauncher').textContent = d.launcher || '';
+    }
+
+    const doneN = d.parts.filter(p=>p.done).length;
+    document.getElementById('doneCount').textContent = '已完成 '+doneN+' / '+d.parts.length+' 个文件';
+
+    document.getElementById('parts').innerHTML = d.parts.map(p=>{
+      const q = p.size ? p.have/p.size : 0;
+      return '<div class="row"><div class="nm">'+p.name+'</div>'+
+        '<div class="bar'+(p.done?' ok':'')+'"><i style="width:'+(q*100).toFixed(2)+'%"></i></div>'+
+        '<div class="pc">'+h(p.have)+' / '+h(p.size)+' · '+(q*100).toFixed(1)+'%</div></div>';
+    }).join('');
+
+    const cells = d.chunks || [];
+    document.getElementById('connInfo').textContent = '运行中进程 '+d.procs+' · 在途分块 '+cells.length+' · 传输中 '+h(d.inFlight);
+    document.getElementById('grid').innerHTML = Array.from({length:d.workers},(_,i)=>{
+      const c = cells[i];
+      if(!c) return '<div class="cell"><span>-</span></div>';
+      const q = c.expect>0 ? c.size/c.expect : 0;
+      return '<div class="cell"><i style="height:'+(q*100).toFixed(1)+'%"></i><span>'+(q*100).toFixed(0)+'%</span></div>';
+    }).join('');
+
+    document.getElementById('log').textContent = (d.log||[]).join('\n');
+  }catch(e){ document.getElementById('subtitle').textContent = '看板服务无响应：'+e.message; }
+}
+tick(); setInterval(tick, 2000);
+</script>
+</body>
+</html>

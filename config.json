@@ -1,0 +1,46 @@
+{
+  "_comment": "AkDownloader 配置文件。路径支持 %ENV% 变量。修改后重启工具生效。",
+
+  "launcherRoot": "C:\\Program Files\\GRYPHLINK",
+  "launcherExe": "C:\\Program Files\\GRYPHLINK\\Launcher.exe",
+
+  "outDir": "",
+  "_outDirHint": "留空时：SDK 模式自动用启动器的任务目录；URL 模式默认用脚本同级的 downloads 目录。",
+
+  "workDir": "%TEMP%\\AkDownloader\\chunks",
+  "logDir": "%TEMP%\\AkDownloader\\logs",
+
+  "workers": 48,
+  "_workersHint": "并发连接数。该 CDN 按连接限速，实测 8/16/32/48 连接 ≈ 0.3/0.9/1.2/3.0 MB/s。",
+  "chunkMB": 4,
+  "_chunkMBHint": "分块大小。越小尾部越平滑，越大 HTTP 开销越低。",
+
+  "port": 8777,
+  "openBrowser": true,
+
+  "speedLimitBps": 4096,
+  "speedTimeSec": 25,
+  "_antiStallHint": "传输速率低于 speedLimitBps 持续 speedTimeSec 秒即判定连接假死并重试。这是本工具最关键的一处修复，不要删。",
+  "maxTimeSec": 300,
+  "connectTimeoutSec": 20,
+  "maxRetries": 8,
+
+  "notifyOnFinish": true,
+  "autoLaunchLauncher": false,
+  "keepAliveMinutes": 30,
+
+  "defaultUrls": [],
+  "_defaultUrlsHint": "自动提取失败时的兜底地址；也可手动填写。可填单个 URL 或 URL 数组，或一个每行一个 URL 的文本文件路径（配合 -UrlFile）。",
+
+  "ui": {
+    "title": "鹰角启动器 · 下载加速器",
+    "subtitle": "自动提取分包地址 · 全局工作池加速 · 断点续传 · 连接假死自愈",
+    "finishedTitle": "下载完成",
+    "finishedBody": "全部文件已下载完成并通过大小校验。\n\n下一步：启动启动器继续安装（不要手动解压分卷）。\n\nLauncher: {launcher}\n文件目录: {targets}",
+    "installHint": "请启动启动器继续安装。分卷不要手动解压，也不要在启动器安装完成前删除。",
+
+    "guiScale": 1.0,
+    "fontScale": 1.0,
+    "_scaleHint": "GUI 控制台缩放。guiScale 缩放整套界面(坐标+控件)，默认 1.0，只跟随系统 DPI；fontScale 只缩放字号，默认 1.0 即 9pt(想更小用 0.85，更大用 1.15)。两者都可用命令行 -Scale / -FontScale 临时覆盖。"
+  }
+}
